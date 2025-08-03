@@ -1,31 +1,40 @@
 const express = require('express');
 const cors = require('cors');
-const bodyParser = require('body-parser');
 const fs = require('fs');
-const stripe = require('stripe')('sk_test_51Rn2f1RvW9dwX7RvfVL9VcVJpy1WSUwON0xdKhNMRUTZrekQP7U2OfrtxEwC4wY1Fq9u8tZAnoeLcBKP1Eab2sbe00lb73vJGT'); // 
+const bodyParser = require('body-parser');
+const stripe = require('stripe')('sk_test_51Rn2f1RvW9dwX7RvfVL9VcVJpy1WSUwON0xdKhNMRUTZrekQP7U2OfrtxEwC4wY1Fq9u8tZAnoeLcBKP1Eab2sbe00lb73vJGT');
 
 const app = express();
-const PORT = 5000;
+const PORT = process.env.PORT || 5000;
 
 app.use(cors());
 app.use(bodyParser.json());
 
-// 🔥 Save order endpoint
+// ✅ Test route
+app.get('/', (req, res) => {
+  res.send('✅ NVRBRTH backend is alive and kicking');
+});
+
+// ✅ Checkout route (saves order info)
 app.post('/api/checkout', (req, res) => {
   const orderData = req.body;
 
+  if (!orderData) {
+    console.error('❌ No order data received.');
+    return res.status(400).json({ success: false, message: 'No data' });
+  }
+
   try {
-    // Append each order as a line of JSON
     fs.appendFileSync('orders.json', JSON.stringify(orderData) + '\n');
-    console.log('✅ Order received:', orderData);
-    res.json({ success: true, message: 'Order saved successfully.' });
-  } catch (error) {
-    console.error('❌ Error saving order:', error);
-    res.status(500).json({ success: false, message: 'Failed to save order.' });
+    console.log('✅ Order saved:', orderData);
+    res.status(200).json({ success: true });
+  } catch (err) {
+    console.error('❌ Failed to save order:', err);
+    res.status(500).json({ success: false, message: 'Failed to save order' });
   }
 });
 
-// ✅ New: Stripe Checkout session creation
+// ✅ Stripe Checkout session route
 app.post('/api/create-checkout-session', async (req, res) => {
   try {
     const session = await stripe.checkout.sessions.create({
@@ -44,22 +53,17 @@ app.post('/api/create-checkout-session', async (req, res) => {
       ],
       mode: 'payment',
       success_url: 'https://nvrbrth.store/thankyou.html',
-      cancel_url: 'https://nvrbrth.store/products.html',
+      cancel_url: 'https://nvrbrth.store/checkout.html',
     });
 
     res.json({ url: session.url });
   } catch (error) {
-    console.error('Stripe error:', error);
+    console.error('❌ Stripe error:', error);
     res.status(500).json({ error: 'Stripe session creation failed' });
   }
 });
 
-// ✅ Root route for testing server is alive
-app.get('/', (req, res) => {
-  res.send('✅ NVRBRTH backend is alive and kicking');
-});
-
-// 🔌 Start server
+// 🚀 Start the server
 app.listen(PORT, () => {
-  console.log(`🚀 NVRBRTH backend running at http://localhost:${PORT}`);
+  console.log(`🚀 Server running at http://localhost:${PORT}`);
 });
